@@ -1,0 +1,46 @@
+[package]
+name = "mempool"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "mempool"
+path = "src/lib.rs"
+
+[features]
+mempool-btree = []
+mempool-heap = []
+default = ["mempool-heap"]
+
+[[bench]]
+name = "bench_insert_txns"
+harness = false
+
+[[bench]]
+name = "bench_insert_and_drain"
+harness = false
+
+
+[dependencies]
+axum = "0.8.4"
+axum-macros = "0.5.0"
+tower-http = { version = "0.6.1", features = ["cors", "trace"] }
+chrono = "0.4.39"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tokio = { version = "1.44.2", features = [
+  "full",
+  "rt",
+  "rt-multi-thread",
+  "macros",
+] }
+dotenv = "0.15.0"
+uuid = { version = "1.13.1", features = ["serde", "v4"] }
+serde = { version = "1.0.217", features = ["derive"] }
+serde_json = "1.0.138"
+thiserror = "2.0.12"
+reqwest = { version = "0.12.15", features = ["json"] }
+axum-test = "17.3.0"
+criterion = "0.5.1"
+async-trait = "0.1.88"
+portpicker = "0.1.1"
