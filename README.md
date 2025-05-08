@@ -1,5 +1,5 @@
 ## What is this?
-- This is an implementation of multiple mempool data structure strategies commonly used in high-throughput systems.
+- This is an implementation of multiple mempool data structure strategies commonly used in high-throughput systems. It includes Criterion benches.
 
 ## Usage
 - `cargo bench`
@@ -59,4 +59,3 @@
 
 ## Next Steps
 - Likely the most performant current alternative (with the current spec) would be sharded binary heaps with a k-way merge on drain.
-- 
