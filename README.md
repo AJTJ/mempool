@@ -42,11 +42,14 @@
 - O(log n) inserts + mutex lock, O(k log N) drains, but also lock
 - Interesting, but certainly limited by having a locking data struture
 
-## Tradeoffs And future thoughts
+## Some Tradeoffs
 - Initially I was curious about the performance of the BinaryTreeMap since it is not widely used (for obvious reasons), but the locking data structure is too much
 - A BinaryHeap is excellent until the single process can't handle the throughput anymore, there is a distinct tradeoff in that regard
 
+## Next Steps
+- Likely the most performant current alternative (with the current spec) would be sharded binary heaps with a k-way merge on drain.
+- Or better yet, making use of the mpmcpq crate
+
+
 ## Other likely more performant Mempool implementations to explore
-- Concurrent priority queue via crossbeam, mpmcpq etc...
-- Atomic skip-list (likely the best)
-- Sharded buckets via dashmap
+- Atomic skip-list would be interesting, if there were different spec requirements
