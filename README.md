@@ -38,7 +38,7 @@
 - Wins in terms of raw performance until the single heap core saturates
 - This data structure would also be easily adaptable to a remove(ID) service
 
-### `Crossbeam SkepSet`
+### `Crossbeam SkipSet`
 - O(log n) average time complexity for both inserts and drains
 - lock-free concurrent access through atomic operations
 - Scalable, multi-threaded
