@@ -1,7 +1,7 @@
 use super::mempool::MemPool;
 use crate::transaction::{InternalTransaction, Transaction};
 use async_trait::async_trait;
-use crossbeam_skiplist::{SkipMap, SkipSet};
+use crossbeam_skiplist::SkipSet;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -38,7 +38,7 @@ impl MemPool for SkipListMemPool {
         let mut out = Vec::with_capacity(n);
         for _ in 0..n {
             if let Some(entry) = self.set.pop_back() {
-                out.push(entry.key().clone());
+                out.push(entry.value().clone());
             } else {
                 break;
             }

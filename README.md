@@ -27,25 +27,24 @@
 - Prioritization logic is handled in the `Ord` implementations in both the `InternalTransaction` and `CompositeKey` structs
 
 ## Notes on the Benches
-- The SkipSet really shines as it isn't single threaded and avoids the request/reply round trip
-- The BinaryHeap excels on pure insertions, as producers never grab a lock, they just enqueue so inserts scale with CPU core
+- The `SkipSet` generally generally seems to perform a bit better when drains are involved, likely to do it isn't single threaded and avoids the request/reply round trip.
+  - I did experiment with `SkipMap` too, and it also seems to perform better than the `SkipSet` sometimes. I'd need further research, and perhaps better benches.
+- The BinaryHeap generally excels on pure insertions, as producers never grab a lock, they just enqueue so inserts scale with CPU core.
 
 ## Some Optimizations
 - `Arc<str>` inside `InternalTransaction` so that cloning an ID is one Atomic increment
-- Pre-allocation of return vectors with `with_capacity(n)` avoid reallocating during large drains
+- Pre-allocation of return vectors with `with_capacity(n)` avoid reallocating during large drains.
 
 ## Mempools used
 ### `BinaryHeap`
 - O(log n) inserts, O(k log N) drains
 - Lock-free due to the mpsc channel implementation and being bound by a single core
-- Wins in terms of raw performance until the single heap core saturates
-- This data structure would also be easily adaptable to a remove(ID) service
+- Wins with insertions, in terms of raw performance until the single heap core saturates
 
 ### `Crossbeam SkipSet`
 - O(log n) average time complexity for both inserts and drains
 - lock-free concurrent access through atomic operations
-- Scalable, multi-threaded
-- No need for manual thread management or channel communication
+- Scalable, multi-threaded and no need for manual thread management or channel communication
 
 ### `BinaryTreeMap` (not as good, but interesting)
 - O(log n) inserts + mutex lock, O(k log N) drains, but also lock
@@ -57,10 +56,8 @@
 - A BinaryHeap is excellent until the single process can't handle the throughput anymore, there is a distinct tradeoff in that regard
 - The SkipSet performs the best, except on pure insertions, where the binary heap shines. That being said, the SkipSet also natively offers more features, as needed, such as delete/replace by ID
 
+
+
 ## Next Steps
 - Likely the most performant current alternative (with the current spec) would be sharded binary heaps with a k-way merge on drain.
-- Or better yet, making use of the mpmcpq crate
-
-
-## Other likely more performant Mempool implementations to explore
-- Atomic skip-list would be interesting, if there were different spec requirements
+- 
