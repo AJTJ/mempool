@@ -1,12 +1,12 @@
 use super::mempool::MemPool;
 use crate::transaction::{InternalTransaction, Transaction};
 use async_trait::async_trait;
-use crossbeam_skiplist::SkipMap;
+use crossbeam_skiplist::{SkipMap, SkipSet};
 use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct SkipListMemPool {
-    map: Arc<SkipMap<InternalTransaction, ()>>,
+    set: Arc<SkipSet<InternalTransaction>>,
 }
 
 impl Default for SkipListMemPool {
@@ -18,7 +18,7 @@ impl Default for SkipListMemPool {
 impl SkipListMemPool {
     pub fn new() -> Self {
         Self {
-            map: Arc::new(SkipMap::new()),
+            set: Arc::new(SkipSet::new()),
         }
     }
 }
@@ -27,7 +27,7 @@ impl SkipListMemPool {
 impl MemPool for SkipListMemPool {
     async fn insert(&self, t: Transaction) {
         let i = InternalTransaction::from(t);
-        self.map.insert(i, ());
+        self.set.insert(i);
     }
 
     async fn drain(&self, n: usize) -> Vec<Transaction> {
@@ -37,7 +37,7 @@ impl MemPool for SkipListMemPool {
 
         let mut out = Vec::with_capacity(n);
         for _ in 0..n {
-            if let Some(entry) = self.map.pop_back() {
+            if let Some(entry) = self.set.pop_back() {
                 out.push(entry.key().clone());
             } else {
                 break;
