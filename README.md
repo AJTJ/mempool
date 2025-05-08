@@ -3,12 +3,12 @@
 
 ## Usage
 - `cargo bench`
-  - this runs all of the Criterion benches located in /benches (should take a minute or so)
+  - this runs all of the Criterion benches located in /benches (should take a minute or so). These benches use and compare all the mempool implementations.
   - To get a visualization of the benches afterwards open: `target/criterion/report/index.html`
 - `cargo run`
   - to run the server and access the endpoints
 - `cargo run --no-default-features --features mempool-btree`
-  - to run the server using the btree (or another future feature)
+  - to run the server using the btree (or another feature)
   - NOTE: feature flags located in Cargo.toml
 - `cargo test`
   - to test the default feature
@@ -34,6 +34,7 @@
 ## Some Optimizations
 - `Arc<str>` inside `InternalTransaction` so that cloning an ID is one Atomic increment
 - Pre-allocation of return vectors with `with_capacity(n)` avoid reallocating during large drains.
+- Will likely dig into further code optimizations where useful
 
 ## Mempools used
 ### `BinaryHeap`
