@@ -1,6 +1,8 @@
 use criterion::{Criterion, criterion_group, criterion_main};
 use mempool::{
-    mempool::{binary_heap::BHeapMemPool, btree::BTreeMemPool, mempool::MemPool},
+    mempool::{
+        binary_heap::BHeapMemPool, btree::BTreeMemPool, mempool::MemPool, skiplist::SkipListMemPool,
+    },
     transaction::Transaction,
 };
 use std::sync::Arc;
@@ -78,6 +80,16 @@ fn bench_insert_and_drain(c: &mut Criterion) {
         b.iter(|| {
             rt.block_on(async {
                 let pool: Arc<dyn MemPool> = Arc::new(BHeapMemPool::default());
+                run_benchmark_scenario(pool).await;
+            })
+        });
+    });
+
+    // Benchmark SkipListMemPool
+    group.bench_function("skiplist", |b| {
+        b.iter(|| {
+            rt.block_on(async {
+                let pool: Arc<dyn MemPool> = Arc::new(SkipListMemPool::default());
                 run_benchmark_scenario(pool).await;
             })
         });

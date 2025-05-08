@@ -10,6 +10,7 @@ path = "src/lib.rs"
 [features]
 mempool-btree = []
 mempool-heap = []
+mempool-skiplist = []
 default = ["mempool-heap"]
 
 [[bench]]
@@ -44,3 +45,4 @@ axum-test = "17.3.0"
 criterion = "0.5.1"
 async-trait = "0.1.88"
 portpicker = "0.1.1"
+crossbeam-skiplist = "0.1.0"

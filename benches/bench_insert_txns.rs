@@ -1,6 +1,8 @@
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use mempool::{
-    mempool::{binary_heap::BHeapMemPool, btree::BTreeMemPool, mempool::MemPool},
+    mempool::{
+        binary_heap::BHeapMemPool, btree::BTreeMemPool, mempool::MemPool, skiplist::SkipListMemPool,
+    },
     transaction::Transaction,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -45,6 +47,16 @@ fn bench_insert(c: &mut Criterion) {
             b.iter(|| {
                 rt.block_on(async {
                     let pool = BHeapMemPool::default();
+                    push_txns(&pool, 0, size).await;
+                })
+            })
+        });
+
+        // Benchmark SkipListMemPool
+        group.bench_function(BenchmarkId::new("skiplist", size), |b| {
+            b.iter(|| {
+                rt.block_on(async {
+                    let pool = SkipListMemPool::default();
                     push_txns(&pool, 0, size).await;
                 })
             })

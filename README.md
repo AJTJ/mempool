@@ -26,7 +26,7 @@
 - The mempool implementions prioritize transactions based on gas price (higher = higher priority) and timestamp (earlier = higher priority if gas prices are equal).
 - Prioritization logic is handled in the `Ord` implementations in both the `InternalTransaction` and `CompositeKey` structs
 
-## Some Optimizations (BinaryHeap mostly)
+## Some Optimizations (BinaryHeap)
 - Producers never grab a lock, they just enqueue so inserts scale with CPU core
 - `Arc<str>` inside `InternalTransaction` so that cloning an ID is one Atomic increment
 - Pre-allocation of return vectors with `with_capacity(n)` avoid reallocating during large drains
@@ -38,13 +38,21 @@
 - Wins in terms of raw performance until the single heap core saturates
 - This data structure would also be easily adaptable to a remove(ID) service
 
+### `Crossbeam SkepSet`
+- O(log n) average time complexity for both inserts and drains
+- lock-free concurrent access through atomic operations
+- Scalable, multi-threaded
+- No need for manual thread management or channel communication
+
 ### `BinaryTreeMap` (not as good, but interesting)
 - O(log n) inserts + mutex lock, O(k log N) drains, but also lock
 - Interesting, but certainly limited by having a locking data struture
 
+
 ## Some Tradeoffs
 - Initially I was curious about the performance of the BinaryTreeMap since it is not widely used (for obvious reasons), but the locking data structure is too much
 - A BinaryHeap is excellent until the single process can't handle the throughput anymore, there is a distinct tradeoff in that regard
+- The SkipSet performs the best, except on pure insertions, where the binary heap shines
 
 ## Next Steps
 - Likely the most performant current alternative (with the current spec) would be sharded binary heaps with a k-way merge on drain.

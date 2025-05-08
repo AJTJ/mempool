@@ -2,20 +2,23 @@ use reqwest::Client;
 use std::time::Duration;
 mod common;
 use common::run_full_server::run_full_server;
-use mempool::transaction::Transaction;
+use mempool::{
+    mempool::{
+        binary_heap::BHeapMemPool, btree::BTreeMemPool, mempool::MemPool, skiplist::SkipListMemPool,
+    },
+    transaction::Transaction,
+};
 use tokio::sync::oneshot;
 use tokio::time::sleep;
 use tracing::{error, info};
 use uuid::Uuid;
 
-#[tokio::test]
-async fn test_multiple_transactions() {
+async fn run_multiple_transactions_test<M: MemPool + Default + Clone + 'static>(port: u16) {
     // Shutdown channel
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
-    let port = 8000;
 
     let server_handle = tokio::spawn(async move {
-        let server = run_full_server(port);
+        let server = run_full_server::<M>(port);
         tokio::select! {
             _ = server => {},
             _ = shutdown_rx => {
@@ -68,14 +71,12 @@ async fn test_multiple_transactions() {
     }
 }
 
-#[tokio::test]
-async fn test_transaction_ordering() {
+async fn run_transaction_ordering_test<M: MemPool + Default + Clone + 'static>(port: u16) {
     // Shutdown channel
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
-    let port = 8001;
 
     let server_handle = tokio::spawn(async move {
-        let server = run_full_server(port);
+        let server = run_full_server::<M>(port);
         tokio::select! {
             _ = server => {},
             _ = shutdown_rx => {
@@ -169,4 +170,34 @@ async fn test_transaction_ordering() {
     if let Err(e) = server_handle.await {
         error!("Server error: {}", e);
     }
+}
+
+#[tokio::test]
+async fn test_multiple_transactions_binary_heap() {
+    run_multiple_transactions_test::<BHeapMemPool>(8000).await;
+}
+
+#[tokio::test]
+async fn test_multiple_transactions_btree() {
+    run_multiple_transactions_test::<BTreeMemPool>(8001).await;
+}
+
+#[tokio::test]
+async fn test_multiple_transactions_skiplist() {
+    run_multiple_transactions_test::<SkipListMemPool>(8002).await;
+}
+
+#[tokio::test]
+async fn test_transaction_ordering_binary_heap() {
+    run_transaction_ordering_test::<BHeapMemPool>(8003).await;
+}
+
+#[tokio::test]
+async fn test_transaction_ordering_btree() {
+    run_transaction_ordering_test::<BTreeMemPool>(8004).await;
+}
+
+#[tokio::test]
+async fn test_transaction_ordering_skiplist() {
+    run_transaction_ordering_test::<SkipListMemPool>(8005).await;
 }
