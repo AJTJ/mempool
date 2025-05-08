@@ -55,9 +55,7 @@
 ## Some Tradeoffs
 - Initially I was curious about the performance of the BinaryTreeMap since it is not widely used (for obvious reasons), but the locking data structure is too much
 - A BinaryHeap is excellent until the single process can't handle the throughput anymore, there is a distinct tradeoff in that regard
-- The SkipSet performs the best, except on pure insertions, where the binary heap shines. That being said, the SkipSet also natively offers more features, as needed, such as delete/replace by ID
-
-
+- The SkipSet generally performs the best, except sometimes on pure insertions, where the binary heap seems to shine. That being said, the SkipSet also natively offers more features, as needed, such as delete/replace by ID
 
 ## Next Steps
 - Likely the most performant current alternative (with the current spec) would be sharded binary heaps with a k-way merge on drain.
