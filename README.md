@@ -21,7 +21,7 @@
 - It has a separate `reserved` data structure: `DashMap` to store to separate reserved txns from the ordered list of txns.
 - It uses Atomic operations to maintain lock-free transitioning between the `map` and the `reserved` list, ensuring strong, safe concurrency.
 - It also includes an optional eviction policy to manage the memory imprint.
-- A reaper task runs in the background to ensure expired txns are removed from the `reserved` map.
+- A reaper task runs in the background to ensure expired txns are removed from the `reserved` map and back into the main `map`.
 
 ## Other improvements
 - The `InternalTransaction` implementation now wraps the payload in an `Arc<[u8]>` which is a much cheaper increment of the reference counter rather than copying all the payload data.
