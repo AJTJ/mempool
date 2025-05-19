@@ -13,6 +13,7 @@ use std::{
     sync::{Arc, atomic::AtomicU8},
     time::Duration,
 };
+use tokio::time::sleep;
 use uuid::Uuid;
 
 // TODO: Make this configurable per reservation
@@ -49,12 +50,13 @@ impl SkipListMemPool {
         let map_ref = new.map.clone();
         let reserved_ref = new.reserved.clone();
 
+        // reaper task
         tokio::spawn(async move {
+            let sweep_delay = Duration::from_millis(DEFAULT_TTL / 4);
             loop {
-                let sleep_time = Duration::from_millis(DEFAULT_TTL / 5);
+                // sleep first
+                sleep(sweep_delay).await;
                 let now = Instant::now();
-
-                tokio::time::sleep(sleep_time).await;
                 reserved_ref.retain(|_, entry| {
                     if entry.expires <= now {
                         if entry
@@ -80,7 +82,6 @@ impl SkipListMemPool {
                 });
             }
         });
-
         new
     }
 }
