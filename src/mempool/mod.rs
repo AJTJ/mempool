@@ -1,5 +1,6 @@
 pub mod binary_heap;
 pub mod btree;
+pub mod helpers;
 pub mod key;
 pub mod mempool;
 pub mod skiplist;

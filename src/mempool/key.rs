@@ -3,6 +3,8 @@ use std::{
     sync::Arc,
 };
 
+use crate::transaction::InternalTransaction;
+
 #[derive(PartialEq, Eq, Clone)]
 pub struct CompositeKey {
     pub gas_price: u64,
@@ -26,5 +28,15 @@ impl Ord for CompositeKey {
                     .cmp(&self.timestamp)
             })
             .then_with(|| self.id.cmp(&other.id))
+    }
+}
+
+impl From<&InternalTransaction> for CompositeKey {
+    fn from(value: &InternalTransaction) -> Self {
+        Self {
+            gas_price: value.gas_price,
+            timestamp: value.timestamp,
+            id: value.id.clone(),
+        }
     }
 }

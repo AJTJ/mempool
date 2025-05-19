@@ -1,17 +1,15 @@
 use criterion::{Criterion, criterion_group, criterion_main};
-use mempool::{
-    mempool::{
-        mempool::{MemPool, ReservableMemPool},
-        skiplist::SkipListMemPool,
-    },
-    transaction::Transaction,
+use mempool::mempool::mempool::ReservableMemPool;
+
+use mempool::mempool::{mempool::MemPool, skiplist::SkipListMemPool};
+use mempool::transaction::Transaction;
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{sync::Arc, time::Duration};
 use tokio::{runtime::Runtime, time::sleep};
 use uuid::Uuid;
 
-/* ---------- helpers ---------- */
 fn now_sec() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -28,18 +26,19 @@ fn make_tx(idx: u64) -> Transaction {
     }
 }
 
-async fn skiplist_two_step(pool: Arc<SkipListMemPool>) {
-    /* 2 producer tasks, 5 000 txs each */
-    let mut producers = Vec::new();
-    for p in 0..2 {
+async fn skiplist_heavy(pool: Arc<SkipListMemPool>) {
+    // 4 producers
+    let mut joins = Vec::new();
+    for p in 0..4 {
         let clone = pool.clone();
-        producers.push(tokio::spawn(async move {
+        joins.push(tokio::spawn(async move {
             for i in 0..5_000u64 {
                 clone.insert(make_tx(i + (p as u64) * 5_000)).await;
             }
         }));
     }
 
+    // builder
     let builder_pool = pool.clone();
     let builder = tokio::spawn(async move {
         for _ in 0..100 {
@@ -49,13 +48,12 @@ async fn skiplist_two_step(pool: Arc<SkipListMemPool>) {
                 .iter()
                 .map(|t| Arc::from(t.id.as_str()))
                 .collect::<Vec<_>>();
-
             sleep(Duration::from_micros(50)).await;
             builder_pool.commit(res.token, &ids).await;
         }
     });
 
-    for j in producers {
+    for j in joins {
         j.await.unwrap();
     }
     builder.await.unwrap();
@@ -66,7 +64,7 @@ fn bench_skiplist_two_step(c: &mut Criterion) {
     let pool = Arc::new(SkipListMemPool::default());
 
     c.bench_function("skiplist_two_step", |b| {
-        b.to_async(&rt).iter(|| skiplist_two_step(pool.clone()));
+        b.to_async(&rt).iter(|| skiplist_heavy(pool.clone()));
     });
 }
 

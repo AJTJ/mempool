@@ -1,7 +1,7 @@
 use super::mempool::MemPool;
 use crate::transaction::{InternalTransaction, Transaction};
 use async_trait::async_trait;
-use std::{collections::BinaryHeap, sync::atomic::AtomicU64};
+use std::collections::BinaryHeap;
 use tokio::sync::{
     mpsc::{self, UnboundedSender},
     oneshot,
@@ -17,6 +17,7 @@ enum ChannelCmd {
 
 #[derive(Clone)]
 pub struct BHeapMemPool {
+    // tx_cmd: Sender<ChannelCmd>,
     tx_cmd: UnboundedSender<ChannelCmd>,
 }
 
@@ -29,6 +30,7 @@ impl Default for BHeapMemPool {
 impl BHeapMemPool {
     pub fn new() -> Self {
         let (tx_cmd, mut rx_cmd) = mpsc::unbounded_channel::<ChannelCmd>();
+        // let (tx_cmd, mut rx_cmd) = mpsc::channel::<ChannelCmd>(1024);
 
         tokio::spawn(async move {
             let mut heap: BinaryHeap<InternalTransaction> = BinaryHeap::new();

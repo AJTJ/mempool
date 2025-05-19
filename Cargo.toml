@@ -11,14 +11,18 @@ path = "src/lib.rs"
 mempool-btree = []
 mempool-heap = []
 mempool-skiplist = []
-default = ["mempool-heap"]
+default = ["mempool-skiplist"]
+
+# [[bench]]
+# name = "bench_insert_txns"
+# harness = false
+
+# [[bench]]
+# name = "bench_insert_and_drain"
+# harness = false
 
 [[bench]]
-name = "bench_insert_txns"
-harness = false
-
-[[bench]]
-name = "bench_insert_and_drain"
+name = "bench_reservable_mempool"
 harness = false
 
 
@@ -42,7 +46,9 @@ serde_json = "1.0.138"
 thiserror = "2.0.12"
 reqwest = { version = "0.12.15", features = ["json"] }
 axum-test = "17.3.0"
-criterion = "0.5.1"
+criterion = { version = "0.5", features = ["async_tokio"] }
 async-trait = "0.1.88"
 portpicker = "0.1.1"
 crossbeam-skiplist = "0.1.0"
+crossbeam = "0.8"
+dashmap = "6.1.0"

@@ -5,7 +5,7 @@ use axum::{
 use mempool::{
     app_state::AppState,
     error::AppError,
-    handlers::{handle_drain, handle_txn_submit},
+    handlers::{handle_commit, handle_drain, handle_release, handle_reserve, handle_txn_submit},
     mempool::ActiveMemPool,
 };
 use std::error::Error;
@@ -20,10 +20,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         mempool: ActiveMemPool::default(),
     };
 
-    let app = Router::new()
-        .route("/submit", post(handle_txn_submit::<ActiveMemPool>))
-        .route("/drain", put(handle_drain::<ActiveMemPool>))
-        .with_state(app_state);
+    let app = router(app_state);
 
     info!("Listening on 8000");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000")
@@ -34,4 +31,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .map_err(|e| AppError::AxumServe(e.to_string()))?;
 
     Ok(())
+}
+
+pub fn router(state: AppState<ActiveMemPool>) -> Router {
+    let core_routes = Router::new()
+        .route("/submit", post(handle_txn_submit::<ActiveMemPool>))
+        .route("/drain", put(handle_drain::<ActiveMemPool>));
+
+    #[cfg(feature = "mempool-skiplist")]
+    let core_routes = core_routes
+        .route("/reserve", post(handle_reserve))
+        .route("/commit", post(handle_commit))
+        .route("/release", post(handle_release));
+
+    core_routes.with_state(state)
 }
