@@ -55,9 +55,9 @@ impl SkipListMemPool {
                 let now = Instant::now();
 
                 tokio::time::sleep(sleep_time).await;
-                for reserved_txn in reserved_ref.iter() {
-                    if reserved_txn.expires <= now {
-                        if reserved_txn
+                reserved_ref.retain(|_, entry| {
+                    if entry.expires <= now {
+                        if entry
                             .stx
                             .state
                             .compare_exchange(
@@ -68,11 +68,16 @@ impl SkipListMemPool {
                             )
                             .is_ok()
                         {
-                            let key = CompositeKey::from(&*reserved_txn.stx.data);
-                            map_ref.insert(key, reserved_txn.stx.clone());
+                            let key = CompositeKey::from(&*entry.stx.data);
+                            map_ref.insert(key, entry.stx.clone());
                         }
+                        // drops
+                        false
+                    } else {
+                        // keeps
+                        true
                     }
-                }
+                });
             }
         });
 
@@ -111,12 +116,16 @@ impl MemPool for SkipListMemPool {
             while self.map.len() > max {
                 if let Some(entry) = self.map.pop_front() {
                     let stx = entry.value();
-                    if stx.state.load(Ordering::Acquire) == TxState::Available as u8 {
-                        stx.state.store(TxState::Final as u8, Ordering::Release);
-                    } else if stx.state.load(Ordering::Acquire) == TxState::Reserved as u8 {
-                        self.map.insert(entry.key().clone(), stx.clone());
-                    } else {
-                        break;
+                    let cur = stx.state.load(Ordering::Acquire);
+
+                    match cur {
+                        v if v == TxState::Available as u8 => {
+                            stx.state.store(TxState::Final as u8, Ordering::Release)
+                        }
+                        v if v == TxState::Reserved as u8 => {
+                            self.map.insert(entry.key().clone(), stx.clone());
+                        }
+                        _ => break,
                     }
                 }
             }
@@ -240,7 +249,6 @@ mod test {
             handles.push(handle);
         }
 
-        // Wait for all producers to finish
         for handle in handles {
             handle.await.unwrap();
         }
