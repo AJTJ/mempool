@@ -8,15 +8,27 @@ use crate::transaction::{
 use async_trait::async_trait;
 use crossbeam_skiplist::SkipMap;
 use dashmap::DashMap;
-use std::sync::atomic::Ordering;
-use std::sync::{Arc, atomic::AtomicU8};
+use std::{sync::atomic::Ordering, time::Instant};
+use std::{
+    sync::{Arc, atomic::AtomicU8},
+    time::Duration,
+};
 use uuid::Uuid;
+
+// TODO: Make this configurable per reservation
+const DEFAULT_TTL: u64 = 2000;
+
+#[derive(Clone)]
+pub struct ReservedEntry {
+    pub token: ReservationToken,
+    pub stx: Arc<StatefulTxn>,
+    pub expires: Instant,
+}
 
 #[derive(Clone)]
 pub struct SkipListMemPool {
     pub map: Arc<SkipMap<CompositeKey, Arc<StatefulTxn>>>,
-    pub reserved: DashMap<Arc<str>, (ReservationToken, Arc<StatefulTxn>)>,
-    // for eviction
+    pub reserved: DashMap<Arc<str>, ReservedEntry>,
     pub capacity: Option<usize>,
 }
 
@@ -28,11 +40,43 @@ impl Default for SkipListMemPool {
 
 impl SkipListMemPool {
     pub fn new() -> Self {
-        Self {
+        let new = Self {
             map: Arc::new(SkipMap::new()),
             reserved: DashMap::new(),
             capacity: None,
-        }
+        };
+
+        let map_ref = new.map.clone();
+        let reserved_ref = new.reserved.clone();
+
+        tokio::spawn(async move {
+            loop {
+                let sleep_time = Duration::from_millis(DEFAULT_TTL / 5);
+                let now = Instant::now();
+
+                tokio::time::sleep(sleep_time).await;
+                for reserved_txn in reserved_ref.iter() {
+                    if reserved_txn.expires <= now {
+                        if reserved_txn
+                            .stx
+                            .state
+                            .compare_exchange(
+                                TxState::Reserved as u8,
+                                TxState::Available as u8,
+                                Ordering::AcqRel,
+                                Ordering::Acquire,
+                            )
+                            .is_ok()
+                        {
+                            let key = CompositeKey::from(&*reserved_txn.stx.data);
+                            map_ref.insert(key, reserved_txn.stx.clone());
+                        }
+                    }
+                }
+            }
+        });
+
+        new
     }
 }
 
@@ -102,8 +146,12 @@ impl ReservableMemPool for SkipListMemPool {
                 )
                 .is_ok()
             {
-                self.reserved
-                    .insert(stx.data.id.clone(), (token, stx.clone()));
+                let entry = ReservedEntry {
+                    token,
+                    stx: stx.clone(),
+                    expires: Instant::now() + Duration::from_millis(DEFAULT_TTL),
+                };
+                self.reserved.insert(stx.data.id.clone(), entry);
                 reservation_tx.push(Transaction::from(stx.data.as_ref()));
             }
         }
@@ -117,9 +165,10 @@ impl ReservableMemPool for SkipListMemPool {
     async fn commit(&self, token: ReservationToken, ids: &[Arc<str>]) -> Vec<Transaction> {
         let mut committed = Vec::with_capacity(ids.len());
         for id in ids {
-            if let Some((removed_key, (stored_token, stx))) = self.reserved.remove(id) {
-                if token == stored_token
-                    && stx
+            if let Some((removed_key, entry)) = self.reserved.remove(id) {
+                if token == entry.token
+                    && entry
+                        .stx
                         .state
                         .compare_exchange(
                             TxState::Reserved as u8,
@@ -129,19 +178,21 @@ impl ReservableMemPool for SkipListMemPool {
                         )
                         .is_ok()
                 {
-                    committed.push(Transaction::from(stx.data.as_ref()));
+                    committed.push(Transaction::from(entry.stx.data.as_ref()));
                 } else {
-                    self.reserved.insert(removed_key, (stored_token, stx));
+                    self.reserved.insert(removed_key, entry);
                 }
             }
         }
         committed
     }
+
     async fn release(&self, token: ReservationToken, ids: &[Arc<str>]) {
         for id in ids {
-            if let Some((_, (stored_token, stx))) = self.reserved.remove(id) {
-                if stored_token == token
-                    && stx
+            if let Some((_, entry)) = self.reserved.remove(id) {
+                if entry.token == token
+                    && entry
+                        .stx
                         .state
                         .compare_exchange(
                             TxState::Reserved as u8,
@@ -151,10 +202,10 @@ impl ReservableMemPool for SkipListMemPool {
                         )
                         .is_ok()
                 {
-                    let key = CompositeKey::from(&(*stx.data));
-                    self.map.insert(key, stx);
+                    let key = CompositeKey::from(&*entry.stx.data);
+                    self.map.insert(key, entry.stx);
                 } else {
-                    self.reserved.insert(id.clone(), (stored_token, stx));
+                    self.reserved.insert(id.clone(), entry);
                 }
             }
         }
