@@ -33,7 +33,7 @@ async fn reserve_commit_roundtrip() {
         .map(|t| Arc::from(t.id.as_str()))
         .collect::<Vec<_>>();
 
-    // wrong token should fail
+    // random new token should fail
     assert!(p.commit(ReservationToken::new_v4(), &ids).await.is_empty());
 
     // correct token succeeds
@@ -52,7 +52,7 @@ async fn release_puts_tx_back() {
         .collect::<Vec<_>>();
 
     p.release(res.token, &ids).await;
-    assert_eq!(p.drain(1).await.len(), 1); // Tx visible again
+    assert_eq!(p.drain(1).await.len(), 1);
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -65,5 +65,5 @@ async fn capacity_eviction_drops_lowest_fee() {
     assert_eq!(p.map.len(), 3);
 
     let lowest_remaining = p.drain(3).await.iter().map(|t| t.gas_price).min().unwrap();
-    assert_eq!(lowest_remaining, 2); // fee=1 evicted
+    assert_eq!(lowest_remaining, 2);
 }
