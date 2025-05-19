@@ -5,9 +5,9 @@
 - I was curious about adding a 2-step drain process while maintaining a lock-free environment
 - And also implementing a basic eviction policy
 - I implemented this over the `SkipListMemPool`, since based on my previous experiments that it was the most likely candidate for this process.
-- The RESTful API exposes endpoints whenever that mempool feature is compiled (it is now the default)
-- I also implemented a couple more efficiency improvements
-- Added a few benches to test the "reservable" features
+- These new RESTful APIs are exposed when the default feature flag is enabled.
+- I also implemented a couple more efficiency improvements.
+- Added a few benches to test the "reservable" features.
 
 ## Notes on Usage
 - Usage stays the same as below (in `V1`), but it is only the default feature (the `SkipListMemPool`) that uses the `ReservableMemPool` behavior and endpoints.
@@ -20,7 +20,8 @@
 - Switched it from a `SkipSet` to a `SkipMap` in or to separate ordering logic from stateful logic.
 - It has a separate `reserved` data structure: `DashMap` to store to separate reserved txns from the ordered list of txns.
 - It uses Atomic operations to maintain lock-free transitioning between the `map` and the `reserved` list, ensuring strong, safe concurrency.
-- It also includes an optional eviction policy to manage the memory imprint
+- It also includes an optional eviction policy to manage the memory imprint.
+- A reaper task runs in the background to ensure expired txns are removed from the `reserved` map.
 
 ## Other improvements
 - The `InternalTransaction` implementation now wraps the payload in an `Arc<[u8]>` which is a much cheaper increment of the reference counter rather than copying all the payload data.
