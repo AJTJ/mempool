@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
-    sync::{Arc, atomic::AtomicU8},
+    sync::{
+        Arc,
+        atomic::{AtomicU8, Ordering as AtomicOrdering},
+    },
 };
 use uuid::Uuid;
 
@@ -33,8 +36,7 @@ pub enum TxState {
     Final = 2, // committed or evicted
 }
 
-// TODO: This is brittle, there is nothing stopping someone from setting it to another value.
-// It needs an actual guard to stop it from being set to another value
+// TODO: This is brittle, implement internal methods to prevent setting it to any other value
 impl From<u8> for TxState {
     fn from(v: u8) -> Self {
         // SAFETY NOTE: we never store any value other than 0,1,2
